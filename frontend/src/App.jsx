@@ -1,31 +1,101 @@
-import React, { useEffect, useState } from 'react'
-import RegistrationForm from './components/RegistrationForm'
-import DirectoryFeed from './components/DirectoryFeed'
-import BatchFilter from './components/BatchFilter'
-import './index.css'
+import { useEffect, useState } from "react";
 
-const API_BASE = import.meta.env.VITE_API_BASE || 'http://localhost:4000/api'
+function App() {
+  const [alumni, setAlumni] = useState([]);
 
-export default function App() {
-  const [profiles, setProfiles] = useState([])
-  const [batch, setBatch] = useState('')
+  const [form, setForm] = useState({
+    name: "",
+    batch: "",
+    company: ""
+  });
 
-  async function fetchProfiles(batchYear) {
-    const q = batchYear ? `?batch=${batchYear}` : ''
-    const res = await fetch(`${API_BASE}/alumni${q}`)
-    const j = await res.json()
-    setProfiles(j.data || [])
-  }
+  const apiURL = "http://localhost:5000/api/alumni";
 
-  useEffect(() => { fetchProfiles(batch) }, [batch])
+  const fetchAlumni = async () => {
+    const res = await fetch(apiURL);
+    const data = await res.json();
+    setAlumni(Array.isArray(data) ? data : []);
+  };
+
+  useEffect(() => {
+    fetchAlumni();
+  }, []);
+
+  const handleSubmit = async (e) => {
+    e.preventDefault();
+
+    if (!form.name || !form.batch || !form.company) {
+      alert("Fill all fields");
+      return;
+    }
+
+    await fetch(apiURL, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json"
+      },
+      body: JSON.stringify(form)
+    });
+
+    setForm({ name: "", batch: "", company: "" });
+    fetchAlumni();
+  };
+
+  const deleteAlumni = async (id) => {
+    try {
+      await fetch(`${apiURL}/${id}`, {
+        method: "DELETE"
+      });
+      fetchAlumni();
+    } catch (error) {
+      console.log(error);
+    }
+  };
 
   return (
-    <div className="container">
+    <div style={{ padding: "20px", fontFamily: "Arial" }}>
       <h1>Alumni Directory</h1>
-      <RegistrationForm onAdded={() => fetchProfiles(batch)} apiBase={API_BASE} />
-      <BatchFilter onChange={b => setBatch(b)} />
-      <DirectoryFeed profiles={profiles} />
+
+      <form onSubmit={handleSubmit}>
+        <input
+          id="name"
+          type="text"
+          placeholder="Name"
+          value={form.name}
+          onChange={(e) => setForm({ ...form, name: e.target.value })}
+        />
+        <input
+          id="batch"
+          type="number"
+          placeholder="Batch"
+          value={form.batch}
+          onChange={(e) => setForm({ ...form, batch: e.target.value })}
+        />
+        <input
+          id="company"
+          type="text"
+          placeholder="Company"
+          value={form.company}
+          onChange={(e) => setForm({ ...form, company: e.target.value })}
+        />
+        <button type="submit">Add Alumni</button>
+      </form>
+
+      <ul>
+        {alumni.map((a) => (
+          <li key={a._id} style={{ marginTop: "10px" }}>
+            {a.name} ({a.batch}) - {a.company}
+            <button
+              style={{ marginLeft: "10px" }}
+              onClick={() => deleteAlumni(a._id)}
+            >
+              Delete
+            </button>
+          </li>
+        ))}
+      </ul>
     </div>
-  )
+  );
 }
 
+export default App;
